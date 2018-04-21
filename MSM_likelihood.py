@@ -32,6 +32,7 @@ def transition_mat(A,inpt,kbar):
     b = inpt[0]
     gamma_kbar = inpt[2]
     gamma = np.zeros((kbar,1))
+    #print(b,gamma_kbar)
     gamma[0,0] = 1-(1-gamma_kbar)**(1/(b**(kbar-1)))
     #print(gamma[0,0])
     for i in range(1,kbar):
@@ -81,7 +82,6 @@ def MSM_likelihood(inpt,kbar,data,A_template,estim_flag,nargout =1):
     w_t = data #np.matlib.repmat(data,1,k2)
     #print(w_t.shape,s.shape,np.sum(s))
     w_t = pa*np.exp(-0.5*((w_t/s)**2))/s
-    #print(w_t[0,:],pa)
     w_t = w_t + 1e-16
     #print(A)
     for t in range(T):
@@ -89,7 +89,7 @@ def MSM_likelihood(inpt,kbar,data,A_template,estim_flag,nargout =1):
         piA = (pi_mat[t,:]@A)
         #print(np.sum(piA))
         C = (w_t[t,:]*piA)
-        ft = np.sum(C)
+        ft = np.sum(C) # log
         if np.isclose(ft,0):
             pi_mat[t+1,1]=1
         else:
@@ -105,3 +105,107 @@ def MSM_likelihood(inpt,kbar,data,A_template,estim_flag,nargout =1):
         return(LL)
     else:
         return(LL,LLs)
+    
+def particle_filter(inpt,kbar,data,A_template,B,estim_flag,nargout =1):
+    if not hasattr(inpt,"__len__"):
+        inpt = [estim_flag[0],inpt,estim_flag[1],estim_flag[2]]
+
+    sigma = inpt[3]/np.sqrt(252)
+    k2 = 2**kbar
+    A = transition_mat(A_template.copy(),inpt,kbar)
+    g_m = gofm(inpt,kbar)
+    Ms = np.arange(len(g_m))
+    T = len(data)
+    # For storing pi_t
+    pi_mat = np.zeros((T,k2))
+    pi_mat[0,:] = (1/k2)*np.ones((1,k2))
+    M_mat = np.zeros((T,B))
+    """
+    Likelihood Algorithm
+    """
+    pa = (2*np.pi)**(-0.5)
+    s = sigma*g_m#np.matlib.repmat(sigma*g_m,T,1)
+    w_t = data #np.matlib.repmat(data,1,k2)
+    #print(w_t.shape,s.shape,np.sum(s))
+    w_t = pa*np.exp(-0.5*((w_t/s)**2))/s
+    w_t = w_t + 1e-16
+    
+    LLs = np.zeros(T-1)
+    M_mat[0,:] = np.random.choice(Ms, size=B, replace=True, p=pi_mat[0,:])
+
+    for i in range(T-1):
+        M_temp = np.zeros(B)
+        weights = np.zeros(B)
+        for j,val in enumerate(M_mat[i,:]):
+            M_temp[j] = np.random.choice(Ms,size = 1,p = A[val.astype(int),:])
+        #print(M_temp)
+        for k,val in enumerate(M_temp):
+            #print(i,w_t.shape,len(M_temp))
+            weights[k] = w_t[i+1,val.astype(int)]/np.sum(w_t[i+1,M_temp.astype(int)])
+        M_mat[i+1,:] = np.random.choice(M_temp,size = B,replace = True,p = weights)
+        
+        LLs[i] = np.mean(w_t[i+1,M_mat[i+1,:].astype(int)])
+    LL = np.sum(np.log(LLs))    
+    if nargout == 1:
+        return(LL)
+    else:
+        return(LL,LLs,M_mat)
+def particle_filtering(inpt,kbar,data,A_template,B):
+    ## Initialization
+    #B = Number of Samples drawn for each T
+    sigma = inpt[3]/np.sqrt(252)
+    k2 = 2**kbar
+    A = transition_mat(A_template.copy(),inpt,kbar)
+    g_m = gofm(inpt,kbar)
+    T = len(data)
+    # For storing pi_t
+    pi_mat = np.zeros((T+1,k2))
+    # For storing M_t
+    M_mat = np.zeros((T+1,B))
+    sim_like = np.zeros(T)
+    pi_mat[0,:] = (1/k2)*np.ones((1,k2))
+    
+    """
+    Likelihood Algorithm
+    """
+    pa = (2*np.pi)**(-0.5)
+    s = sigma*g_m
+    w_t = data 
+    #w_t has to be 1x8 matrix
+    w_t = pa*np.exp(-0.5*((w_t/s)**2))/s
+    w_t = w_t + 1e-16
+    
+    # Reference dictionary to match the value of g_m and its corresponding likelihood for resampling
+    dict_ref = {val:w_t[key] for key, val in enumerate(g_m)}
+    
+    
+    
+    
+    """
+    M- Sampling
+    """
+    M_mat[0,:] = np.random.choice(g_m, size=B, replace=True, p=pi_mat[0,:])
+    for i in range(T):
+        # 1x8 matrix
+        temp_pi = pi_mat[i,:] @ A
+        
+        # element multiplication
+        ## Dimension of w_t and temp_pi has to be (1,k_bar)
+        pi_mat[i+1,:] = w_t * temp_pi[None]
+        
+        # temporary sampling using the updated conditional distribution  (1000 samples)
+        temp_M = np.random.choice(g_m, size=B, replace=True, p=pi_mat[i+1,:])
+        # storing likelihoods that correspond to one of the values in "g_m"
+        temp_like = np.array([dict_ref[val] for val in temp_M])
+        # re_calculate the weighted probability.
+        w_like = temp_like/np.sum(temp_like)
+        M_mat[i+1,:]= np.random.choice(temp_M,size=B,replace=True,p=w_like)
+        
+        '''
+        Simulated Likelihood
+        '''
+        # Corresponding likelihood for each value in "M_mat" at time t
+        cond_dens = np.array([dict_ref[val] for val in M_mat[i+1,:]])
+        sim_like[i] = np.sum(cond_dens)/B
+    log_likelihood = np.sum(np.log(sim_like))
+    return (pi_mat, M_mat, log_likelihood)    

@@ -107,7 +107,7 @@ def MSM_likelihood(inpt,kbar,data,A_template,estim_flag,nargout =1):
     #print(A)
     for t in range(T):
         #print(pi_mat.shape,A.shape)
-        piA = (pi_mat[t,:]@A)
+        piA = np.dot(pi_mat[t,:],A)
         #print(np.sum(piA))
         C = (w_t[t,:]*piA)
         ft = np.sum(C) # log
@@ -289,9 +289,7 @@ def particle_filtering(inpt,kbar,data,A_template,B):
     sim_like = np.zeros(T)
     pi_mat[0,:] = (1/k2)*np.ones((1,k2))
     
-    """
-    Likelihood Algorithm
-    """
+ 
     pa = (2*np.pi)**(-0.5)
     s = sigma*g_m
     w_t = data 
@@ -305,9 +303,7 @@ def particle_filtering(inpt,kbar,data,A_template,B):
     
     
     
-    """
-    M- Sampling
-    """
+
     M_mat[0,:] = np.random.choice(g_m, size=B, replace=True, p=pi_mat[0,:])
     for i in range(T):
         # 1x8 matrix

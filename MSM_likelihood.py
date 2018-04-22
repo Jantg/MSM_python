@@ -132,7 +132,7 @@ def particle_filter(inpt,kbar,data,A_template,B,estim_flag,nargout =1):
     
     LLs = np.zeros(T-1)
     M_mat[0,:] = np.random.choice(Ms, size=B, replace=True, p=pi_mat[0,:])
-
+    
     for i in range(T-1):
         M_temp = np.zeros(B)
         weights = np.zeros(B)
@@ -150,6 +150,108 @@ def particle_filter(inpt,kbar,data,A_template,B,estim_flag,nargout =1):
         return(LL)
     else:
         return(LL,LLs,M_mat)
+    
+def LW_filter(inpt,kbar,data,A_template,B,a,nEff):
+    # set priors and other variables
+    sigma = inpt[3]/np.sqrt(252)
+    k2 = 2**kbar
+    A = transition_mat(A_template.copy(),inpt,kbar)
+    inputs = []
+    T = len(data)
+    # For storing weights
+    weights = np.zeros((T,B))
+    w_t = np.zeros((T,B))
+    weights[0,:] = (1/B)
+    M_mat = np.zeros((T,B))
+    Ms = np.arange(k2)
+    """
+    Likelihood Algorithm
+    """
+    pa = (2*np.pi)**(-0.5)
+    #s = sigma*g_m#np.matlib.repmat(sigma*g_m,T,1)
+    #w_t = data #np.matlib.repmat(data,1,k2)
+    #print(w_t.shape,s.shape,np.sum(s))
+    #w_t = pa*np.exp(-0.5*((w_t/s)**2))/s
+    #w_t = w_t + 1e-16
+    
+    LLs = np.zeros(T-1)
+    M_mat[0,:] = np.random.choice(Ms, size=B, replace=True, p=(1/k2)*np.ones(k2))
+    s = sigma*gofm(inpt,kbar)
+    hoge = pa*np.exp(-0.5*((data[0]/s)**2))/s
+    w_t[0,:] = hoge[M_mat[0,:].astype(int)]
+    for idx,val in enumerate(inpt):
+        tmp = np.zeros((T,B))
+        if idx == 0:
+            tmp[0,:] = np.random.random(B)*10+1
+        elif idx == 1:
+            tmp[0,:] = np.random.random(B)+1
+        elif idx == 2:
+            tmp[0,:] = np.random.random(B)
+        else:
+            tmp[0,:] = np.random.random(B)*5
+        inputs.append(tmp)
+    #g_m = gofm(inpt,kbar)
+    #sigma = inputs[3][0,:]/np.sqrt(252)
+    #s = sigma
+    N_eff = np.zeros(T)
+    for i in range(T-1):
+        muSystem = np.zeros((len(inpt),B))
+        sigma2System = np.zeros((len(inpt),B))
+        alphaSystem = np.zeros((len(inpt),B))
+        betaSystem = np.zeros((len(inpt),B))
+        M_temp = np.zeros(B)
+        
+        for j,val in enumerate(M_mat[i,:]):
+            inp_tmp = [inputs[0][i,j],inputs[1][i,j],inputs[2][i,j],inputs[3][i,j]]
+            A = transition_mat(A_template.copy(),inp_tmp,kbar)
+            M_temp[j] = np.random.choice(Ms,size = 1,p = A[val.astype(int),:])        
+        
+        for idx,val in enumerate(inputs):
+            meanSystem= np.average(val[i,:],weights = weights[i,:])
+            varSystem = np.average((val[i,:]-meanSystem)**2,weights = weights[i,:])
+            #print(meanSystem,varSystem,np.max(weights[i,:]))
+            muSystem[idx,:] = a*val[i,:]+(1-a)*meanSystem
+            sigma2System[idx,:] = (1-(a**2))*varSystem
+            alphaSystem[idx,:] = muSystem[idx,:]**2/sigma2System[idx,:]
+            betaSystem[idx,:] = muSystem[idx,:]/sigma2System[idx,:]
+        for k,val in enumerate(M_temp): # for M_t+1^1 to M_t+1^B
+            #weight particles given the likelihood
+            inp_tmp = [inputs[0][i,k],inputs[1][i,k],inputs[2][i,k],inputs[3][i,k]] 
+            if inp_tmp[1]>2:
+                inp_tmp[1] = 1.9999999
+            sigma = inp_tmp[3]/np.sqrt(252)
+            g_m = gofm(inp_tmp,kbar)
+            s = sigma*g_m[val.astype(int)]
+            #print(s,inp_tmp ,g_m[val.astype(int)])
+            w_t[i+1,k] = pa*np.exp(-0.5*((data[i+1]/s)**2))/s
+            w_t[i+1,k] = w_t[i+1,k] + 1e-16
+            weights[i+1,k] = w_t[i+1,k]
+        weights[i+1,:] = weights[i+1,:]/np.sum(weights[i+1,:])
+        Ix = np.random.choice(B,size = B, replace =True,p = weights[i+1,:])
+        M_mat[i+1,:] = M_temp[Ix.astype(int)]
+        for idx,val in enumerate(inputs):
+            inputs[idx][i+1,:] = np.random.gamma(shape = alphaSystem[idx,Ix.astype(int)],
+                  scale = 1/betaSystem[idx,Ix.astype(int)],size = B)
+            print(inputs[idx][i+1,:],np.mean(1/betaSystem[idx,:]))
+            #print(np.max(inputs[idx][i+1,:]))
+        #print(inputs[3][i+1,:])
+        LLs[i] = np.mean(w_t[i+1,M_mat[i+1,:].astype(int)])
+        N_eff[i+1]  =  1 / np.dot(weights[i+1,:],weights[i+1,:])
+        print("finished running ",i," times ")
+        if (N_eff[i+1] < nEff):
+            print(i,"hogeeeeeeeeeeeeeeeeeeeeeeeeee")
+            # multinominal resampling
+            print(weights[i+1,:])
+            tmp = np.random.choice(B, size = B, replace = True, p = weights[i+1,:])
+            w_t[i+1,:] = w_t[i+1, tmp.astype(int)]
+            #pfOutObsVar[it, ] <- pfOutObsVar[it, tmp]
+            for idx,val in enumerate(inputs):
+                inputs[idx][i+1,:] = val[i+1,tmp.astype(int)]
+            weights[i+1,:] = 1/B
+    LL = np.sum(np.log(LLs))    
+    
+    return(LL,LLs,M_mat,inputs)
+
 def particle_filtering(inpt,kbar,data,A_template,B):
     ## Initialization
     #B = Number of Samples drawn for each T

@@ -117,7 +117,7 @@ def MSM_likelihood(inpt,kbar,data,A_template,estim_flag,nargout =1):
             pi_mat[t+1,:] = C/ft
         #print(ft)
         #print(np.any(w_t[t,:] == np.inf))    
-        LLs[t] = np.log(w_t[t,:]@piA)
+        LLs[t] = np.log(np.dot(w_t[t,:],piA))
         
     LL = -np.sum(LLs)
     if np.any(np.isinf(LLs)):

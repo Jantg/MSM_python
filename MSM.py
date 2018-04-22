@@ -61,15 +61,21 @@ if __name__ == "__main__":
     
     dat = pd.read_csv("data_demo.csv",header = None)
     dat = np.array(dat)
-    #LL,LLs,params = MSM_modified(dat,5,None)
-    kbar = 3
+    #LL_,LLs_,params_ = MSM_modified(dat,3,None)
+    kbar = 5
     #kbar2 = 2**kbar
-    #LL,LLs,params,M_mat = MSM_particle(dat,kbar,1000,None)
+    #LL_,LLs_,params,M_mat = MSM_particle(dat,kbar,1000,None)
     
-    A_template = T_mat_template(kbar)
+    #A_template = T_mat_template(kbar)
     #startingvals, LLs,ordered_parameters = MSM_starting_values(dat,None,kbar,A_template)
     startingvals = [2,1.5,0.1,0.2]
-    LL,LLs,M_mat,inputs = LW_filter(startingvals,kbar,dat,A_template,3000,0.975,1500)
+    LL,LLs,M_mat,inputs = LW_filter(startingvals,kbar,dat,3000,0.975,1500)
+    LLs_out = pd.DataFrame(LLs)
+    M_mat_out = pd.DataFrame(M_mat)
+    param_out = pd.DataFrame(inputs)
+    LLs_out.to_csv("LLs.csv",index = False)
+    M_mat_out.to_csv("states.csv",index = False)
+    param_out.tocsv("params.csv",index = False)
     #cts = {key: 0 for key in np.linspace(0,kbar2-1,kbar2)}
     #for i,v in enumerate(M_mat[-1,:]):
     #    cts[v] +=1

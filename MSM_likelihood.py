@@ -61,7 +61,28 @@ def transition_mat(A,inpt,kbar):
             A[kbar2-i-1,kbar2-j-1] = A[i,j]
     #print(A)       
     return(A)
-    
+
+def transition_prob(inpt,state_t,kbar): 
+    kbar2 = 2**kbar
+    b = inpt[0]
+    gamma_kbar = inpt[2]
+    gamma = np.zeros(kbar)
+    gamma[0] = 1-(1-gamma_kbar)**(1/(b**(kbar-1)))
+    probs = np.ones(kbar2)
+    #print(gamma[0,0])
+    for i in range(1,kbar):
+        gamma[i] = 1-(1-gamma[0])**(b**(i))
+    for i in range(kbar2):
+        b_xor = np.bitwise_xor(state_t,i)
+        val = np.unpackbits(np.arange(b_xor,b_xor+1,dtype = np.uint16).view(np.uint8))
+        val = np.append(val[8:],val[:8])[-kbar:]
+        for j,v in enumerate(val):
+            if v == 1:
+                probs[i] = probs[i]*gamma[j]
+            else:
+                probs[i] = probs[i]*(1-gamma[j])
+    return(probs)
+        
 def MSM_likelihood(inpt,kbar,data,A_template,estim_flag,nargout =1):
     if not hasattr(inpt,"__len__"):
         inpt = [estim_flag[0],inpt,estim_flag[1],estim_flag[2]]
@@ -151,11 +172,11 @@ def particle_filter(inpt,kbar,data,A_template,B,estim_flag,nargout =1):
     else:
         return(LL,LLs,M_mat)
     
-def LW_filter(inpt,kbar,data,A_template,B,a,nEff):
+def LW_filter(inpt,kbar,data,B,a,nEff):
     # set priors and other variables
     sigma = inpt[3]/np.sqrt(252)
     k2 = 2**kbar
-    A = transition_mat(A_template.copy(),inpt,kbar)
+    #A = transition_mat(A_template.copy(),inpt,kbar)
     inputs = []
     T = len(data)
     # For storing weights
@@ -203,9 +224,10 @@ def LW_filter(inpt,kbar,data,A_template,B,a,nEff):
         
         for j,val in enumerate(M_mat[i,:]):
             inp_tmp = [inputs[0][i,j],inputs[1][i,j],inputs[2][i,j],inputs[3][i,j]]
-            A = transition_mat(A_template.copy(),inp_tmp,kbar)
-            M_temp[j] = np.random.choice(Ms,size = 1,p = A[val.astype(int),:])        
-        
+            #A = transition_mat(A_template.copy(),inp_tmp,kbar)
+            prob = transition_prob(inp_tmp,val.astype(int),kbar)
+            #M_temp[j] = np.random.choice(Ms,size = 1,p = A[val.astype(int),:])        
+            M_temp[j] = np.random.choice(Ms,size = 1,p = prob) 
         for idx,val in enumerate(inputs):
             meanSystem= np.average(val[i,:],weights = weights[i,:])
             varSystem = np.average((val[i,:]-meanSystem)**2,weights = weights[i,:])

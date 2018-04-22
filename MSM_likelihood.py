@@ -273,7 +273,7 @@ def LW_filter(inpt,kbar,data,B,a,nEff):
     LL = np.sum(np.log(LLs))    
     
     return(LL,LLs,M_mat,inputs)
-
+"""
 def particle_filtering(inpt,kbar,data,A_template,B):
     ## Initialization
     #B = Number of Samples drawn for each T
@@ -332,4 +332,5 @@ def particle_filtering(inpt,kbar,data,A_template,B):
         cond_dens = np.array([dict_ref[val] for val in M_mat[i+1,:]])
         sim_like[i] = np.sum(cond_dens)/B
     log_likelihood = np.sum(np.log(sim_like))
-    return (pi_mat, M_mat, log_likelihood)    
+    return (pi_mat, M_mat, log_likelihood)  
+"""

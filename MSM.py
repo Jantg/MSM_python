@@ -86,7 +86,7 @@ if __name__ == "__main__":
         dat[k] = np.prod(tmp)
     dat = np.sqrt(dat)*sig* np.random.normal(size = T)
     dat = dat.reshape(-1,1)
-    dat.to_csv("dat.csv",index = False)
+    pd.DataFrame(dat).to_csv("dat.csv",index = False)
     #dat = pd.read_csv("data_demo.csv",header = None)
     #dat = np.array(dat)
     #LL_,LLs_,params_= MSM_modified(dat,3,None)

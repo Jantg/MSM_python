@@ -62,11 +62,11 @@ def MSM_particle(data,kbar,n_particles,startingvals):
 if __name__ == "__main__":
     T = 1000
     kbar = 3
-    g_kbar = 0.95
+    g_kbar = 0.5
     b = 5
     m0 = 1.5
     m1 = 2-1.5
-    sig = 1
+    sig = 3
     g_s = np.zeros(kbar)
     M_s = np.zeros((kbar,T))
     g_s[0] = 1-(1-g_kbar)**(1/(b**(kbar-1)))
@@ -95,8 +95,8 @@ if __name__ == "__main__":
     
     #A_template = T_mat_template(kbar)
     #startingvals, LLs,ordered_parameters = MSM_starting_values(dat,None,kbar,A_template)
-    startingvals = [6,1.3,0.9,3]
-    LL,LLs,M_mat,inputs,w = LW_filter(startingvals,kbar,dat,10000,0.97,5000)
+    startingvals = [1,1.6,0.9,10]
+    LL,LLs,M_mat,inputs,w = LW_filter(startingvals,kbar,dat,10000,0.95,8000)
     #LLs_out = pd.DataFrame(LLs)
     #M_mat_out = pd.DataFrame(M_mat)
     #param_out = pd.DataFrame(inputs)

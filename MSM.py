@@ -7,11 +7,11 @@ Created on Sat Apr  7 14:55:04 2018
 """
 import numpy as np
 #from starting_vals import MSM_starting_values,MSM_starting_values_pf
-#from MSM_likelihood import MSM_likelihood,particle_filter,LW_filter
-from MSM_likelihood import LW_filter
+from MSM_likelihood import MSM_likelihood,particle_filter,LW_filter
+#from MSM_likelihood import LW_filter
 #import scipy
 import pandas as pd
-"""
+
 def T_mat_template(kbar):
     kbar2 = 2**kbar
     A = np.zeros((kbar2,kbar2))
@@ -52,7 +52,7 @@ def MSM_particle(data,kbar,n_particles,startingvals):
         
     return(LL,LLs,parameters,M_mat)
 
-"""   
+  
 #A_template = T_mat_template(3)
 #import pandas as pd
 #dat = pd.read_csv("data_demo.csv",header = None)
@@ -60,17 +60,42 @@ def MSM_particle(data,kbar,n_particles,startingvals):
 #MSM_starting_values(dat,None,3,A_template)
         
 if __name__ == "__main__":
+    T = 1000
+    kbar = 3
+    g_kbar = 0.9
+    b = 5
+    m0 = 1.5
+    m1 = 2-1.5
+    sig = 0.3
+    g_s = np.zeros(kbar)
+    M_s = np.zeros((kbar,T))
+    g_s[0] = 1-(1-g_kbar)**(1/(b**(kbar-1)))
+    for i in range(1,kbar):
+        g_s[i] = 1-(1-g_s[0])**(b**(i))
     
-    dat = pd.read_csv("data_demo.csv",header = None)
-    dat = np.array(dat)
-    #LL_,LLs_,params_ = MSM_modified(dat,3,None)
-    kbar = 5
+    for j in range(kbar):
+        M_s[j,:] = np.random.binomial(1,g_s[j],T)
+    dat = np.zeros(T)
+    tmp = (M_s[:,0]==1)*m1+(M_s[:,0]==0)*m0
+    dat[0] = np.prod(tmp)
+    for k in range(1,T):
+        for j in range(kbar):
+            if M_s[j,k]==1:
+                tmp[j] = np.random.choice([m0,m1],1,p = [0.5,0.5])
+
+        dat[k] = np.prod(tmp)
+    dat = np.sqrt(dat)*sig + np.random.normal(size = T)
+    dat = dat.reshape(-1,1)
+    #dat = pd.read_csv("data_demo.csv",header = None)
+    #dat = np.array(dat)
+    LL_,LLs_,params_ = MSM_modified(dat,3,None)
+    #kbar = 5
     #kbar2 = 2**kbar
     #LL_,LLs_,params,M_mat = MSM_particle(dat,kbar,1000,None)
     
     #A_template = T_mat_template(kbar)
     #startingvals, LLs,ordered_parameters = MSM_starting_values(dat,None,kbar,A_template)
-    startingvals = [2,1.5,0.1,0.2]
+    startingvals = [2,1.5,0.5,0.2]
     LL,LLs,M_mat,inputs = LW_filter(startingvals,kbar,dat,3000,0.975,1500)
     LLs_out = pd.DataFrame(LLs)
     M_mat_out = pd.DataFrame(M_mat)

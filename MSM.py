@@ -104,6 +104,7 @@ if __name__ == "__main__":
     m0_out = pd.DataFrame(inputs[1])
     g_out = pd.DataFrame(inputs[2])
     s_out = pd.DataFrame(inputs[3])
+    w_out = pd.DataFrame(w)
     #param_out = pd.DataFrame(inputs)
     LLs_out.to_csv("LLs.csv",index = False)
     M_mat_out.to_csv("states.csv",index = False)
@@ -111,7 +112,7 @@ if __name__ == "__main__":
     m0_out.to_csv("m0.csv",index = False)
     g_out.to_csv("g.csv",index = False)
     s_out.to_csv("s.csv",index = False)
-    
+    w_out.to_csv("w.csv",index = False)
     #param_out.tocsv("params.csv",index = False)
     #cts = {key: 0 for key in np.linspace(0,kbar2-1,kbar2)}
     #for i,v in enumerate(M_mat[-1,:]):

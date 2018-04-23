@@ -7,6 +7,7 @@ Created on Thu Apr  5 17:12:32 2018
 """
 
 import numpy as np
+from scipy.stats.mstats import mquantiles
 
 def gofm(inpt,kbar):
     """
@@ -209,7 +210,7 @@ def LW_filter(inpt,kbar,data,B,a,nEff):
         elif idx == 2:
             tmp[0,:] = np.random.random(B)
         else:
-            tmp[0,:] = np.random.random(B)*5
+            tmp[0,:] = np.random.random(B)*50
         inputs.append(tmp)
     #g_m = gofm(inpt,kbar)
     #sigma = inputs[3][0,:]/np.sqrt(252)
@@ -228,6 +229,7 @@ def LW_filter(inpt,kbar,data,B,a,nEff):
             prob = transition_prob(inp_tmp,val.astype(int),kbar)
             #M_temp[j] = np.random.choice(Ms,size = 1,p = A[val.astype(int),:])        
             M_temp[j] = np.random.choice(Ms,size = 1,p = prob) 
+        sys_diag = []
         for idx,val in enumerate(inputs):
             meanSystem= np.average(val[i,:],weights = weights[i,:])
             varSystem = np.average((val[i,:]-meanSystem)**2,weights = weights[i,:])
@@ -236,25 +238,29 @@ def LW_filter(inpt,kbar,data,B,a,nEff):
             sigma2System[idx,:] = (1-(a**2))*varSystem
             alphaSystem[idx,:] = muSystem[idx,:]**2/sigma2System[idx,:]
             betaSystem[idx,:] = muSystem[idx,:]/sigma2System[idx,:]
+            sys_diag.append(meanSystem)
+            sys_diag.append(varSystem)
+        print(sys_diag)
         for k,val in enumerate(M_temp): # for M_t+1^1 to M_t+1^B
             #weight particles given the likelihood
             inp_tmp = [inputs[0][i,k],inputs[1][i,k],inputs[2][i,k],inputs[3][i,k]] 
             if inp_tmp[1]>2:
-                inp_tmp[1] = 1.9999999
+                inp_tmp[1] = 1.99
             sigma = inp_tmp[3]/np.sqrt(252)
             g_m = gofm(inp_tmp,kbar)
             s = sigma*g_m[val.astype(int)]
             #print(s,inp_tmp ,g_m[val.astype(int)])
             w_t[i+1,k] = pa*np.exp(-0.5*((data[i+1]/s)**2))/s
-            w_t[i+1,k] = w_t[i+1,k] + 1e-16
+            w_t[i+1,k] = w_t[i+1,k] 
             weights[i+1,k] = w_t[i+1,k]
+        print(mquantiles(weights[i+1,:]))
         weights[i+1,:] = weights[i+1,:]/np.sum(weights[i+1,:])
         Ix = np.random.choice(B,size = B, replace =True,p = weights[i+1,:])
         M_mat[i+1,:] = M_temp[Ix.astype(int)]
         for idx,val in enumerate(inputs):
             inputs[idx][i+1,:] = np.random.gamma(shape = alphaSystem[idx,Ix.astype(int)],
                   scale = 1/betaSystem[idx,Ix.astype(int)],size = B)
-            print(inputs[idx][i+1,:],np.mean(1/betaSystem[idx,:]))
+            #print(inputs[idx][i+1,:],np.mean(1/betaSystem[idx,:]))
             #print(np.max(inputs[idx][i+1,:]))
         #print(inputs[3][i+1,:])
         LLs[i] = np.mean(w_t[i+1,M_mat[i+1,:].astype(int)])
@@ -272,7 +278,7 @@ def LW_filter(inpt,kbar,data,B,a,nEff):
             weights[i+1,:] = 1/B
     LL = np.sum(np.log(LLs))    
     
-    return(LL,LLs,M_mat,inputs)
+    return(LL,LLs,M_mat,inputs,weights)
 """
 def particle_filtering(inpt,kbar,data,A_template,B):
     ## Initialization

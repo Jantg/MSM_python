@@ -62,11 +62,11 @@ def MSM_particle(data,kbar,n_particles,startingvals):
 if __name__ == "__main__":
     T = 1000
     kbar = 3
-    g_kbar = 0.9
+    g_kbar = 0.95
     b = 5
     m0 = 1.5
     m1 = 2-1.5
-    sig = 0.3
+    sig = 1
     g_s = np.zeros(kbar)
     M_s = np.zeros((kbar,T))
     g_s[0] = 1-(1-g_kbar)**(1/(b**(kbar-1)))
@@ -84,25 +84,25 @@ if __name__ == "__main__":
                 tmp[j] = np.random.choice([m0,m1],1,p = [0.5,0.5])
 
         dat[k] = np.prod(tmp)
-    dat = np.sqrt(dat)*sig + np.random.normal(size = T)
+    dat = np.sqrt(dat)*sig* np.random.normal(size = T)
     dat = dat.reshape(-1,1)
     #dat = pd.read_csv("data_demo.csv",header = None)
     #dat = np.array(dat)
-    LL_,LLs_,params_ = MSM_modified(dat,3,None)
+    LL_,LLs_,params_= MSM_modified(dat,3,None)
     #kbar = 5
     #kbar2 = 2**kbar
     #LL_,LLs_,params,M_mat = MSM_particle(dat,kbar,1000,None)
     
     #A_template = T_mat_template(kbar)
     #startingvals, LLs,ordered_parameters = MSM_starting_values(dat,None,kbar,A_template)
-    startingvals = [2,1.5,0.5,0.2]
-    LL,LLs,M_mat,inputs = LW_filter(startingvals,kbar,dat,3000,0.975,1500)
-    LLs_out = pd.DataFrame(LLs)
-    M_mat_out = pd.DataFrame(M_mat)
-    param_out = pd.DataFrame(inputs)
-    LLs_out.to_csv("LLs.csv",index = False)
-    M_mat_out.to_csv("states.csv",index = False)
-    param_out.tocsv("params.csv",index = False)
+    startingvals = [6,1.3,0.9,3]
+    LL,LLs,M_mat,inputs,w = LW_filter(startingvals,kbar,dat,10000,0.97,5000)
+    #LLs_out = pd.DataFrame(LLs)
+    #M_mat_out = pd.DataFrame(M_mat)
+    #param_out = pd.DataFrame(inputs)
+    #LLs_out.to_csv("LLs.csv",index = False)
+    #M_mat_out.to_csv("states.csv",index = False)
+    #param_out.tocsv("params.csv",index = False)
     #cts = {key: 0 for key in np.linspace(0,kbar2-1,kbar2)}
     #for i,v in enumerate(M_mat[-1,:]):
     #    cts[v] +=1

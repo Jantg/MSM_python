@@ -86,9 +86,10 @@ if __name__ == "__main__":
         dat[k] = np.prod(tmp)
     dat = np.sqrt(dat)*sig* np.random.normal(size = T)
     dat = dat.reshape(-1,1)
+    dat.to_csv("dat.csv",index = False)
     #dat = pd.read_csv("data_demo.csv",header = None)
     #dat = np.array(dat)
-    LL_,LLs_,params_= MSM_modified(dat,3,None)
+    #LL_,LLs_,params_= MSM_modified(dat,3,None)
     #kbar = 5
     #kbar2 = 2**kbar
     #LL_,LLs_,params,M_mat = MSM_particle(dat,kbar,1000,None)
